@@ -1,30 +1,10 @@
-# build_pack.py - 稳定版（支持 ZIP 内提取 .nro）
+# build_pack.py - 修复 DMCA 问题，使用 sigmapatches.info
 import os
 import sys
 import shutil
 import zipfile
 import requests
 from pathlib import Path
-
-# 如果提供了 GITHUB_TOKEN，用于提升 API 限额
-token = os.getenv("GITHUB_TOKEN")
-GITHUB_API_HEADERS = {
-    "Accept": "application/vnd.github.v3+json",
-    **({"Authorization": f"token {token}"} if token else {})
-}
-
-def get_latest_release_asset(owner, repo, suffix_filter):
-    url = f"https://api.github.com/repos/{owner}/{repo}/releases/latest"
-    resp = requests.get(url, headers=GITHUB_API_HEADERS)
-    if resp.status_code == 403 and "rate limit" in resp.text:
-        print("❌ GitHub API 限速！请稍后再试。")
-        sys.exit(1)
-    resp.raise_for_status()
-    data = resp.json()
-    for asset in data["assets"]:
-        if asset["name"].endswith(suffix_filter):
-            return asset["browser_download_url"], asset["name"]
-    raise Exception(f"在 {owner}/{repo} 中未找到以 {suffix_filter} 结尾的文件")
 
 def download_file(url, save_path):
     print(f"📥 下载: {save_path.name}")
@@ -39,9 +19,8 @@ def extract_zip(zip_path, extract_to):
         zf.extractall(extract_to)
 
 def find_nro_in_dir(root: Path, target_name: str = None):
-    """递归查找 .nro 文件"""
     for f in root.rglob("*.nro"):
-        if target_name is None or target_name in f.name:
+        if target_name is None or target_name in f.name.lower():
             return f
     raise FileNotFoundError(f".nro 文件未在 {root} 中找到")
 
@@ -58,16 +37,26 @@ def main():
     try:
         print("🚀 构建 Switch 大气层整合包（含 sigpatches）...")
 
-        # 1. sigpatches
-        print("\n[1/5] 获取 sigpatches...")
-        sig_url, _ = get_latest_release_asset("ITotalJustice", "patches", ".zip")
+        # ✅ 使用 sigmapatches.info 官方 CDN（无 DMCA 风险）
+        print("\n[1/5] 从 sigmapatches.info 获取 sigpatches...")
+        sig_url = "https://download.sigmapatches.info/sigpatches.zip"
         sig_zip = temp_dir / "sigpatches.zip"
         download_file(sig_url, sig_zip)
         extract_zip(sig_zip, output_dir)
 
-        # 2. fusee.bin
-        print("\n[2/5] 获取 fusee.bin...")
-        atmo_url, _ = get_latest_release_asset("Atmosphere-NX", "Atmosphere", ".zip")
+        # 2. 获取最新 fusee.bin（Atmosphère 官方）
+        print("\n[2/5] 获取最新 fusee.bin...")
+        atmo_api = "https://api.github.com/repos/Atmosphere-NX/Atmosphere/releases/latest"
+        resp = requests.get(atmo_api)
+        resp.raise_for_status()
+        data = resp.json()
+        for asset in data["assets"]:
+            if asset["name"].endswith(".zip"):
+                atmo_url = asset["browser_download_url"]
+                break
+        else:
+            raise Exception("未找到 Atmosphère ZIP")
+        
         atmo_zip = temp_dir / "atmo.zip"
         download_file(atmo_url, atmo_zip)
         atmo_temp = temp_dir / "atmo"
@@ -75,7 +64,7 @@ def main():
         extract_zip(atmo_zip, atmo_temp)
         shutil.copy(atmo_temp / "fusee.bin", output_dir / "fusee.bin")
 
-        # 3. 目录
+        # 3. 创建目录
         tesla_app_dir = output_dir / "tesla" / "apps"
         emuiibo_data_dir = output_dir / "emuiibo"
         daybreak_dir = output_dir / "switch" / "Daybreak"
@@ -84,9 +73,18 @@ def main():
         for d in [tesla_app_dir, emuiibo_data_dir, daybreak_dir, config_dir]:
             d.mkdir(parents=True, exist_ok=True)
 
-        # 4. Tesla (从 ZIP 提取)
+        # 4. Tesla Menu
         print("\n[3/5] 下载 Tesla Menu...")
-        tesla_url, _ = get_latest_release_asset("WerWolv", "Tesla-Menu", ".zip")
+        tesla_api = "https://api.github.com/repos/WerWolv/Tesla-Menu/releases/latest"
+        resp = requests.get(tesla_api)
+        resp.raise_for_status()
+        data = resp.json()
+        for asset in data["assets"]:
+            if asset["name"].endswith(".zip"):
+                tesla_url = asset["browser_download_url"]
+                break
+        else:
+            raise Exception("未找到 Tesla ZIP")
         tesla_zip = temp_dir / "tesla.zip"
         download_file(tesla_url, tesla_zip)
         tesla_temp = temp_dir / "tesla"
@@ -95,9 +93,18 @@ def main():
         tesla_nro = find_nro_in_dir(tesla_temp, "menu")
         shutil.copy(tesla_nro, tesla_app_dir / "tesla_menu.nro")
 
-        # 5. emuiibo (从 ZIP 提取)
+        # 5. emuiibo
         print("\n[4/5] 下载 emuiibo...")
-        emuiibo_url, _ = get_latest_release_asset("XorTroll", "emuiibo", ".zip")
+        emuiibo_api = "https://api.github.com/repos/XorTroll/emuiibo/releases/latest"
+        resp = requests.get(emuiibo_api)
+        resp.raise_for_status()
+        data = resp.json()
+        for asset in data["assets"]:
+            if asset["name"].endswith(".zip"):
+                emuiibo_url = asset["browser_download_url"]
+                break
+        else:
+            raise Exception("未找到 emuiibo ZIP")
         emuiibo_zip = temp_dir / "emuiibo.zip"
         download_file(emuiibo_url, emuiibo_zip)
         emuiibo_temp = temp_dir / "emuiibo"
@@ -106,22 +113,30 @@ def main():
         emuiibo_nro = find_nro_in_dir(emuiibo_temp)
         shutil.copy(emuiibo_nro, tesla_app_dir / "emuiibo.nro")
 
-        # 6. DBI (通常提供 .nro)
+        # 6. DBI (Daybreak)
         print("\n[5/5] 下载 DBI (Daybreak)...")
-        try:
-            dbi_url, _ = get_latest_release_asset("mison20000", "daybreak", ".nro")
-            download_file(dbi_url, daybreak_dir / "Daybreak.nro")
-        except:
-            # 回退到 ZIP
-            print("⚠️ 尝试从 ZIP 下载 DBI...")
-            dbi_url, _ = get_latest_release_asset("mison20000", "daybreak", ".zip")
-            dbi_zip = temp_dir / "dbi.zip"
-            download_file(dbi_url, dbi_zip)
+        dbi_api = "https://api.github.com/repos/mison20000/daybreak/releases/latest"
+        resp = requests.get(dbi_api)
+        resp.raise_for_status()
+        data = resp.json()
+        for asset in data["assets"]:
+            if asset["name"].endswith(".nro") or asset["name"].endswith(".zip"):
+                dbi_url = asset["browser_download_url"]
+                dbi_name = asset["name"]
+                break
+        else:
+            raise Exception("未找到 DBI 文件")
+        
+        dbi_path = temp_dir / dbi_name
+        download_file(dbi_url, dbi_path)
+        if dbi_name.endswith(".zip"):
             dbi_temp = temp_dir / "dbi"
             dbi_temp.mkdir()
-            extract_zip(dbi_zip, dbi_temp)
+            extract_zip(dbi_path, dbi_temp)
             dbi_nro = find_nro_in_dir(dbi_temp)
             shutil.copy(dbi_nro, daybreak_dir / "Daybreak.nro")
+        else:
+            shutil.copy(dbi_path, daybreak_dir / "Daybreak.nro")
 
         # 7. 启用 Tesla
         (config_dir / "system_settings.ini").write_text('[tesla]\nenabled = u8"1"\n', encoding="utf-8")
@@ -131,7 +146,7 @@ def main():
         print(f"\n📦 打包整合包 → {zip_name}")
         shutil.make_archive("Switch_Atmo_Integration_Pack", 'zip', output_dir)
 
-        print("\n✅ 成功！整合包已生成。")
+        print("\n✅ 整合包构建成功！")
 
     except Exception as e:
         print(f"\n❌ 错误: {e}")
