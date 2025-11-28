@@ -1,17 +1,17 @@
 # .github/workflows/build.yml
-name: Build Switch Atmo Pack Builder
+name: Generate Switch Atmosphère Integration Pack
 
 on:
+  workflow_dispatch:  # 允许手动触发
   push:
     branches: [ main ]
-  workflow_dispatch:  # 允许手动触发
 
 jobs:
   build:
-    runs-on: windows-latest
+    runs-on: ubuntu-latest  # Linux 更快更稳定
 
     steps:
-    - name: Checkout code
+    - name: Checkout repository
       uses: actions/checkout@v4
 
     - name: Set up Python
@@ -21,26 +21,14 @@ jobs:
 
     - name: Install dependencies
       run: |
-        pip install requests pyinstaller
+        pip install requests
 
-    - name: Build EXE
+    - name: Run build script
       run: |
-        pyinstaller --onefile --console --name="SwitchAtmoPackBuilder" atmo_pack_builder.py
+        python build_pack.py
 
-    - name: Run script to generate pack (optional demo)
-      run: |
-        dist\SwitchAtmoPackBuilder.exe
-      continue-on-error: true  # 可能因网络失败，不影响 exe 生成
-
-    - name: Upload EXE artifact
+    - name: Upload Integration Pack ZIP
       uses: actions/upload-artifact@v4
       with:
-        name: SwitchAtmoPackBuilder-exe
-        path: dist/SwitchAtmoPackBuilder.exe
-
-    - name: Upload Integration Pack ZIP (if generated)
-      uses: actions/upload-artifact@v4
-      with:
-        name: Atmo-Integration-Pack-ZIP
-        path: Atmo_Integration_Pack.zip
-        if-no-files-found: ignore
+        name: Switch_Atmo_Integration_Pack
+        path: Switch_Atmo_Integration_Pack.zip
