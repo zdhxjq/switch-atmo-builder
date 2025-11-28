@@ -12,7 +12,7 @@ def get_latest_release_asset(owner, repo, suffix_filter):
     url = f"https://api.github.com/repos/{owner}/{repo}/releases/latest"
     resp = requests.get(url, headers=GITHUB_API_HEADERS)
     if resp.status_code == 403 and "rate limit" in resp.text:
-        print("7²2„1‚5 GitHub API ÏÞËÙ£¬ÇëÉÔºóÔÙÊÔ»òÔÚ±¾µØÔËÐÐ¡£")
+        print("âš ï¸ GitHub API é™é€Ÿï¼Œè¯·ç¨åŽå†è¯•æˆ–åœ¨æœ¬åœ°è¿è¡Œã€‚")
         sys.exit(1)
     resp.raise_for_status()
     data = resp.json()
@@ -22,7 +22,7 @@ def get_latest_release_asset(owner, repo, suffix_filter):
     raise Exception(f"No asset found with suffix {suffix_filter} in {owner}/{repo}")
 
 def download_file(url, save_path):
-    print(f"ÕýÔÚÏÂÔØ {save_path.name} ...")
+    print(f"æ­£åœ¨ä¸‹è½½ {save_path.name} ...")
     with requests.get(url, stream=True) as r:
         r.raise_for_status()
         with open(save_path, 'wb') as f:
@@ -44,16 +44,16 @@ def main():
     temp_dir.mkdir()
 
     try:
-        print("=== ¹¹½¨ Switch Atmosph¨¨re ÕûºÏ°ü£¨º¬ sigpatches£©===")
+        print("=== æž„å»º Switch AtmosphÃ¨re æ•´åˆåŒ…ï¼ˆå« sigpatchesï¼‰===")
 
-        # 1. ÏÂÔØ sigpatches
-        print("\n[1/5] ÏÂÔØ sigpatches...")
+        # 1. ä¸‹è½½ sigpatches
+        print("\n[1/5] ä¸‹è½½ sigpatches...")
         sig_url, sig_name = get_latest_release_asset("ITotalJustice", "patches", ".zip")
         sig_zip = temp_dir / sig_name
         download_and_extract(sig_url, sig_zip, output_dir)
 
-        # 2. ÏÂÔØ¹Ù·½ Atmosph¨¨re£¨fusee.bin£©
-        print("\n[2/5] ÏÂÔØ fusee.bin...")
+        # 2. ä¸‹è½½å®˜æ–¹ AtmosphÃ¨reï¼ˆfusee.binï¼‰
+        print("\n[2/5] ä¸‹è½½ fusee.bin...")
         atmo_url, _ = get_latest_release_asset("Atmosphere-NX", "Atmosphere", ".zip")
         atmo_resp = requests.get(atmo_url, stream=True)
         atmo_zip = temp_dir / "atmo.zip"
@@ -65,7 +65,7 @@ def main():
         extract_zip_to(atmo_zip, atmo_temp)
         shutil.copy(atmo_temp / "fusee.bin", output_dir / "fusee.bin")
 
-        # 3. ´´½¨Ä¿Â¼
+        # 3. åˆ›å»ºç›®å½•
         tesla_app_dir = output_dir / "tesla" / "apps"
         emuiibo_data_dir = output_dir / "emuiibo"
         daybreak_dir = output_dir / "switch" / "Daybreak"
@@ -76,34 +76,34 @@ def main():
         daybreak_dir.mkdir(parents=True, exist_ok=True)
         config_dir.mkdir(parents=True, exist_ok=True)
 
-        # 4. ÏÂÔØ Tesla
-        print("\n[3/5] ÏÂÔØ Tesla Menu...")
+        # 4. ä¸‹è½½ Tesla
+        print("\n[3/5] ä¸‹è½½ Tesla Menu...")
         tesla_url, tesla_name = get_latest_release_asset("WerWolv", "Tesla-Menu", ".nro")
         download_file(tesla_url, tesla_app_dir / tesla_name)
 
-        # 5. ÏÂÔØ emuiibo
-        print("\n[4/5] ÏÂÔØ emuiibo...")
+        # 5. ä¸‹è½½ emuiibo
+        print("\n[4/5] ä¸‹è½½ emuiibo...")
         emuiibo_url, emuiibo_name = get_latest_release_asset("XorTroll", "emuiibo", ".nro")
         download_file(emuiibo_url, tesla_app_dir / emuiibo_name)
 
-        # 6. ÏÂÔØ DBI
-        print("\n[5/5] ÏÂÔØ DBI (Daybreak)...")
+        # 6. ä¸‹è½½ DBI
+        print("\n[5/5] ä¸‹è½½ DBI (Daybreak)...")
         dbi_url, dbi_name = get_latest_release_asset("mison20000", "daybreak", ".nro")
         download_file(dbi_url, daybreak_dir / dbi_name)
 
-        # ÆôÓÃ Tesla
+        # å¯ç”¨ Tesla
         (config_dir / "system_settings.ini").write_text('[tesla]\nenabled = u8"1"\n')
 
-        # ´ò°üÎª ZIP£¨·½±ãÏÂÔØ£©
+        # æ‰“åŒ…ä¸º ZIPï¼ˆæ–¹ä¾¿ä¸‹è½½ï¼‰
         zip_name = "Atmo_Integration_Pack.zip"
-        print(f"\n”9à4 ÕýÔÚ´ò°üÎª {zip_name}...")
+        print(f"\nðŸ“¦ æ­£åœ¨æ‰“åŒ…ä¸º {zip_name}...")
         shutil.make_archive("Atmo_Integration_Pack", 'zip', output_dir)
 
-        print(f"\n7¼3 ¹¹½¨³É¹¦£¡ÕûºÏ°üÒÑÉú³É¡£")
-        print("GitHub Actions ½«×Ô¶¯ÉÏ´« .exe ºÍÕûºÏ°ü ZIP¡£")
+        print(f"\nâœ… æž„å»ºæˆåŠŸï¼æ•´åˆåŒ…å·²ç”Ÿæˆã€‚")
+        print("GitHub Actions å°†è‡ªåŠ¨ä¸Šä¼  .exe å’Œæ•´åˆåŒ… ZIPã€‚")
 
     except Exception as e:
-        print(f"\n7Ã4 ´íÎó: {e}")
+        print(f"\nâŒ é”™è¯¯: {e}")
         sys.exit(1)
     finally:
         if temp_dir.exists():
